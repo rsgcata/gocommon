@@ -119,28 +119,3 @@ func GetAsDuration(envName string, defaultVal time.Duration) time.Duration {
 
 	return valDuration
 }
-
-// GetAsTime Returns the env value as time for the provided env variable name.
-// It will use the defaultVal if the env variable is not set, empty or invalid time format.
-// Accepted time format: time.RFC3339.
-func GetAsTime(envName string, defaultVal time.Time) time.Time {
-	val, exists := os.LookupEnv(envName)
-
-	if !exists {
-		return defaultVal
-	}
-
-	val = strings.TrimSpace(val)
-
-	if val == "" {
-		return defaultVal
-	}
-
-	valTime, err := time.Parse(time.RFC3339, val)
-
-	if err != nil {
-		return defaultVal
-	}
-
-	return valTime
-}

@@ -3,6 +3,7 @@ package env
 import (
 	"github.com/stretchr/testify/suite"
 	"testing"
+	"time"
 )
 
 type EnvSuite struct {
@@ -78,6 +79,50 @@ func (suite *EnvSuite) TestItCanGetEnvAsBool() {
 	for name, scenario := range scenarios {
 		suite.T().Setenv(envName, scenario.envVal)
 		val := GetAsBool(envName, scenario.defaultVal)
+		suite.Assert().Equal(scenario.expectedVal, val, "Failed scenario %s", name)
+	}
+}
+
+func (suite *EnvSuite) TestItCanGetEnvAsFloat() {
+	scenarios := map[string]struct {
+		envVal      string
+		defaultVal  float64
+		expectedVal float64
+	}{
+		"empty env val":       {"", 1.22, 1.22},
+		"empty space env val": {"    ", 1.33, 1.33},
+		"not empty env val":   {"1.123", 1.33, 1.123},
+	}
+
+	envName := "TEST_1234567"
+	val := GetAsFloat(envName, 1.23)
+	suite.Assert().Equal(1.23, val)
+
+	for name, scenario := range scenarios {
+		suite.T().Setenv(envName, scenario.envVal)
+		val := GetAsFloat(envName, scenario.defaultVal)
+		suite.Assert().Equal(scenario.expectedVal, val, "Failed scenario %s", name)
+	}
+}
+
+func (suite *EnvSuite) TestItCanGetEnvAsDuration() {
+	scenarios := map[string]struct {
+		envVal      string
+		defaultVal  time.Duration
+		expectedVal time.Duration
+	}{
+		"empty env val":       {"", 3 * time.Second, 3 * time.Second},
+		"empty space env val": {"    ", 2 * time.Minute, 2 * time.Minute},
+		"not empty env val":   {"11h", 2 * time.Minute, 11 * time.Hour},
+	}
+
+	envName := "TEST_1234567"
+	val := GetAsDuration(envName, 2*time.Minute)
+	suite.Assert().Equal(2*time.Minute, val)
+
+	for name, scenario := range scenarios {
+		suite.T().Setenv(envName, scenario.envVal)
+		val := GetAsDuration(envName, scenario.defaultVal)
 		suite.Assert().Equal(scenario.expectedVal, val, "Failed scenario %s", name)
 	}
 }
