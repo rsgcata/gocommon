@@ -98,7 +98,7 @@ func (m *mockCommand) Exec(_ InputOptionsMap, _ io.Writer) error {
 	return nil
 }
 
-func (s *HelpSuite) TestHelpCommand_Exec() {
+func (s *HelpSuite) TestHelpCommandExecutionCanShowAvailableCommandsInfo() {
 	tests := []struct {
 		name          string
 		commands      []Command
