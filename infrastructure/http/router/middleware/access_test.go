@@ -58,6 +58,7 @@ func (suite *AccessSuite) TestAccessLoggerCanLogAccessDetails() {
 			},
 		),
 		logger,
+		AccessLogOptions{true},
 	)
 
 	middleware.ServeHTTP(
