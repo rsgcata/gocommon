@@ -137,3 +137,25 @@ func GetAsDuration(val string, defaultVal time.Duration) (
 
 	return valDuration, false
 }
+
+type RawVal string
+
+func (rawVal RawVal) GetAsString(defaultVal string) (string, bool) {
+	return GetAsString(string(rawVal), defaultVal)
+}
+
+func (rawVal RawVal) GetAsInt(defaultVal int) (int, bool) {
+	return GetAsInt(string(rawVal), defaultVal)
+}
+
+func (rawVal RawVal) GetAsBool(defaultVal bool) (bool, bool) {
+	return GetAsBool(string(rawVal), defaultVal)
+}
+
+func (rawVal RawVal) GetAsFloat(defaultVal float64) (float64, bool) {
+	return GetAsFloat(string(rawVal), defaultVal)
+}
+
+func (rawVal RawVal) GetAsDuration(defaultVal time.Duration) (time.Duration, bool) {
+	return GetAsDuration(string(rawVal), defaultVal)
+}

@@ -3,12 +3,17 @@ package cli
 import (
 	"errors"
 	"fmt"
+	"github.com/rsgcata/gocommon/params"
 	"io"
 	"maps"
 	"os"
+	"reflect"
 	"slices"
 	"strings"
 )
+
+const StatusOk = 0
+const StatusErr = 1
 
 type InputOptionDefinition struct {
 	name        string
@@ -17,9 +22,29 @@ type InputOptionDefinition struct {
 	defaultVal  string
 }
 
+func (def InputOptionDefinition) Name() string {
+	return def.name
+}
+
+func (def InputOptionDefinition) Description() string {
+	return def.description
+}
+
+func (def InputOptionDefinition) Required() bool {
+	return def.required
+}
+
+func (def InputOptionDefinition) DefaultValue() string {
+	return def.defaultVal
+}
+
 type InputOption struct {
 	InputOptionDefinition
 	rawVal string
+}
+
+func (opt InputOption) RawVal() params.RawVal {
+	return params.RawVal(opt.rawVal)
 }
 
 type InputOptionDefinitionMap map[string]InputOptionDefinition
@@ -79,22 +104,31 @@ func BuildOptionsFrom(
 	return options, optionErrors
 }
 
-func runCommand(cmd Command, rawOptions []string, stdOutWriter io.Writer) {
+func runCommand(cmd Command, rawOptions []string, outputWriter io.Writer) (cmdErr error) {
+	defer func() {
+		if err := recover(); err != nil {
+			cmdErr = err.(error)
+		}
+	}()
+
 	optionsMap, errs := BuildOptionsFrom(rawOptions, cmd)
 	if len(errs) > 0 {
-		fmt.Printf(
+		return fmt.Errorf(
 			"Failed to execute command %s with error: %s\n",
 			cmd.Id(),
 			errors.Join(errs...).Error(),
 		)
 	}
-	if cmdErr := cmd.Exec(optionsMap, stdOutWriter); cmdErr != nil {
-		fmt.Printf(
+
+	if cmdErr = cmd.Exec(optionsMap, outputWriter); cmdErr != nil {
+		return fmt.Errorf(
 			"Failed to execute command %s with error: %s\n",
 			cmd.Id(),
 			cmdErr.Error(),
 		)
 	}
+
+	return cmdErr
 }
 
 func parseCmdInput(args []string) (cmdName string, rawOptions []string) {
@@ -132,27 +166,55 @@ func (registry *CommandsRegistry) Commands() map[string]Command {
 	return cmdCopy
 }
 
+func (registry *CommandsRegistry) Command(id string) (Command, bool) {
+	cmd, ok := registry.commands[id]
+	return cmd, ok
+}
+
 // Bootstrap Will bootstrap everything needed for the user CLI request. Will process the
-// user input and run the requested command
+// user input and run the requested command. By default, will output to os.Stdout if
+// nil is provided for the io.Writer argument.
 func Bootstrap(
 	args []string,
 	availableCommands CommandsRegistry,
+	outputWriter io.Writer,
+	processExit func(code int),
 ) {
+	if outputWriter == nil {
+		outputWriter = os.Stdout
+	}
+
+	if processExit == nil {
+		processExit = os.Exit
+	}
+
 	_ = availableCommands.Register(
 		&HelpCommand{slices.Collect(maps.Values(availableCommands.Commands()))},
 	)
-	cmdName, rawOptions := parseCmdInput(args)
-	if cmdName == "" {
-		cmdName = (&HelpCommand{}).Id()
+	cmdId, rawOptions := parseCmdInput(args)
+	if cmdId == "" {
+		cmdId = (&HelpCommand{}).Id()
 	}
 
-	stdOutWriter := os.Stdout
-	for _, cmd := range availableCommands.Commands() {
-		if cmdName == cmd.Id() {
-			runCommand(cmd, rawOptions, stdOutWriter)
-			return
+	var cmdErr error
+	cmd, exists := availableCommands.Command(cmdId)
+	if !exists {
+		cmdErr = fmt.Errorf("The command %s does not exist\n", cmdId)
+	} else {
+		cmdErr = runCommand(cmd, rawOptions, outputWriter)
+	}
+
+	if cmdErr != nil {
+		_, outputErr := outputWriter.Write([]byte(cmdErr.Error()))
+		if outputErr != nil {
+			fmt.Printf(
+				"Error writing to the provided output writer %s\n",
+				reflect.TypeOf(outputWriter),
+			)
 		}
+		processExit(StatusErr)
+		return
 	}
 
-	fmt.Printf("The command %s does not exist\n", cmdName)
+	processExit(StatusOk)
 }
