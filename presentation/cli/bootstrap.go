@@ -205,7 +205,15 @@ func Bootstrap(
 	}
 
 	if cmdErr != nil {
-		_, outputErr := outputWriter.Write([]byte(cmdErr.Error()))
+		_, outputErr := outputWriter.Write(
+			[]byte(
+				fmt.Sprintf(
+					"Failed to execute command %s with error: %s\n",
+					cmdId,
+					cmdErr.Error(),
+				),
+			),
+		)
 		if outputErr != nil {
 			fmt.Printf(
 				"Error writing to the provided output writer %s\n",
